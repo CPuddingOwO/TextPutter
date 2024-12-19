@@ -1,0 +1,9 @@
+.idea
+
+build
+external/sdl/*
+external/sdl_image/*
+
+*.iml
+*.o
+*.exe
