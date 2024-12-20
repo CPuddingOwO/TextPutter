@@ -6,9 +6,9 @@ External Dependencies:
 
  - [Imgui](https://github.com/ocornut/imgui)
  - [SDL3](https://www.libsdl.org/)
- - [SDL3_image](https://www.libsdl.org/projects/SDL_image/)
  - [nlohmann/json](https://github.com/nlohmann/json)
  - [spdlog](https://github.com/gabime/spdlog)
+ - [yaml-cpp](https://github.com/jbeder/yaml-cpp)
 
 ---
 
