@@ -2,15 +2,17 @@
 #include <TextPutter/SharedLocator.hpp>
 #include <TextPutter/io/SDL.hpp>
 #include <TextPutter/io/State.hpp>
+#include <TextPutter/io/Data.hpp>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <SDL3/SDL.h>
-//#include <SDL3_image/SDL_image.h>
 #include <imgui/imgui_impl_sdlrenderer3.h>
 #include <imgui/imgui_impl_sdl3.h>
 
 #include <stdexcept>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 namespace tp {
 
@@ -22,15 +24,38 @@ namespace tp {
         quit();
     }
 
+    ImColor HexToImColor(const std::string& hex) {
+        int r = 0, g = 0, b = 0, a = 0;
+
+        if (hex[0] == '#') {
+            std::string ss = hex.substr(1);
+            if (ss.size() == 8) {
+                r = std::stoi(ss.substr(0, 2), nullptr, 16);  // 红色
+                g = std::stoi(ss.substr(2, 2), nullptr, 16);  // 绿色
+                b = std::stoi(ss.substr(4, 2), nullptr, 16);  // 蓝色
+                a = std::stoi(ss.substr(6, 2), nullptr, 16);  // Alpha（透明度）
+            } else if (ss.size() == 6) {
+                r = std::stoi(ss.substr(0, 2), nullptr, 16);  // 红色
+                g = std::stoi(ss.substr(2, 2), nullptr, 16);  // 绿色
+                b = std::stoi(ss.substr(4, 2), nullptr, 16);  // 蓝色
+            }
+        }
+
+        return {r, g, b, a};  // 返回ImColor对象
+    }
+
     void Application::init() {
         { // Init Contexts
             auto ctx = std::make_shared<tp::SDL_Context>();
             ctx->window_title = "TextPutter";
             ctx->window_size = glm::ivec2(640, 480);
-            SharedLocator::Provide<tp::SDL_Context>( ctx );
+            SharedLocator::Provide<tp::SDL_Context>(ctx);
 
             auto state = std::make_shared<tp::State>();
-            SharedLocator::Provide<tp::State>( state );
+            SharedLocator::Provide<tp::State>(state);
+
+            auto students_task = std::make_shared<tp::Data>();
+            SharedLocator::Provide<tp::Data>(students_task);
         }
 
         auto sdl_ctx = SharedLocator::Get<tp::SDL_Context>();
@@ -50,7 +75,7 @@ namespace tp {
                                   sdl_ctx->window_title.c_str());
             SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, sdl_ctx->window_size.x);
             SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, sdl_ctx->window_size.y);
-            SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN,true); // Borderless
+            SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true); // Borderless
             SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, true); // HDPI
 
             // Init Window
@@ -82,27 +107,59 @@ namespace tp {
 
         { // Init Imgui
             ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO(); (void)io;
+            ImGuiIO &io = ImGui::GetIO();
+            (void) io;
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
             //io.Fonts->AddFontDefault();
-            //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
+            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 32.0f, nullptr,
+                                         io.Fonts->GetGlyphRangesChineseFull());
+//            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 32.0f);
+//            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\segoeui.ttf)", 32.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-            //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+//            ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
             //IM_ASSERT(font != nullptr);
 
             ImGui::StyleColorsLight();
             ImGui_ImplSDL3_InitForSDLRenderer(sdl_ctx->window, sdl_ctx->renderer);
             ImGui_ImplSDLRenderer3_Init(sdl_ctx->renderer);
         }
+        { // 读取数据
+            auto task = SharedLocator::Get<tp::Data>();
+            auto now = std::chrono::system_clock::now();
+            auto weekday = std::chrono::floor<std::chrono::days>(now).time_since_epoch() / std::chrono::days(1) % 7;
+
+
+            switch (weekday) {
+                case 0: task->weekDay = "Sun";break;  // Sunday
+                case 1: task->weekDay = "Mon";break;  // Monday
+                case 2: task->weekDay = "Tue";break;  // Tuesday
+                case 3: task->weekDay = "Wed";break;  // Wednesday
+                case 4: task->weekDay = "Thu";break;  // Thursday
+                case 5: task->weekDay = "Fri";break;  // Friday
+                case 6: task->weekDay = "Sat";break;  // Saturday
+                default: task->weekDay = "";
+            }
+
+            YAML::Node data = YAML::LoadFile("data.yml");
+            task->bbColor = HexToImColor(data["BBColor"].as<std::string>());
+            task->lcColor = HexToImColor(data["LCColor"].as<std::string>());
+            task->ncColor = HexToImColor(data["NCColor"].as<std::string>());
+            task->background = HexToImColor(data["BackgroundColor"].as<std::string>());
+
+            task->Blackboard = data["BrashBlackBoard"][0][task->weekDay.c_str()].as<std::string>();
+            task->LoonCleaner = data["LoonClearner"][0][task->weekDay.c_str()].as<std::string>();
+            task->NightCleaner = data["NightClearner"][0][task->weekDay.c_str()].as<std::string>();
+        }
     }
 
     void Application::run() {
         auto app_state = SharedLocator::Get<tp::State>();
         auto sdl_ctx = SharedLocator::Get<tp::SDL_Context>();
+        auto task = SharedLocator::Get<tp::Data>();
 
         while (app_state->isRunning) {
             { // Event Polling
@@ -126,13 +183,50 @@ namespace tp {
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
             { // Rendering
-                ImGui::Begin("#App#Main");
-                ImGui::Text("qwq");
-                ImGui::End();
+                {
+                    ImGuiIO imgui_io = ImGui::GetIO();
+                    ImGuiStyle& style = ImGui::GetStyle();
+                    style.WindowBorderSize = 0;
+                    ImGuiWindowFlags flags = 0;
+                    flags |= ImGuiWindowFlags_NoTitleBar;
+                    flags |= ImGuiWindowFlags_NoCollapse;
+                    flags |= ImGuiWindowFlags_NoMove;
+                    flags |= ImGuiWindowFlags_NoResize;
+                    flags |= ImGuiWindowFlags_NoScrollbar;
+                    flags |= ImGuiWindowFlags_NoBackground;
+                    flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+                    flags |= ImGuiWindowFlags_NoFocusOnAppearing;
+
+                    bool open = true;
+
+                    ImGuiViewport* viewport = ImGui::GetMainViewport();
+                    ImGui::SetNextWindowSize(viewport->Size);
+                    ImGui::SetNextWindowPos(viewport->Pos);
+
+                    ImGui::Begin("#App#Main", &open, flags);
+                    {
+                        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize("XX  ").x);
+                        if (ImGui::Button("XX")) {
+                            app_state->isRunning = false;
+                        }
+                        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize("--  XX  ").x);
+                        if (ImGui::Button("--")) {
+                            SDL_MinimizeWindow(sdl_ctx->window);
+                        }
+                        ImGui::TextColored(ImColor(255, 73, 158, 255), "非常好ImGui, 使我的IDE旋转");
+                        ImGui::TextColored(task->bbColor, "擦黑板: ");ImGui::SameLine();
+                        ImGui::TextColored(task->bbColor, "%s", task->Blackboard.c_str());
+                        ImGui::TextColored(task->lcColor, "中午卫生: ");ImGui::SameLine();
+                        ImGui::TextColored(task->lcColor, "%s", task->LoonCleaner.c_str());
+                        ImGui::TextColored(task->ncColor, "晚上卫生: ");ImGui::SameLine();
+                        ImGui::TextColored(task->ncColor, "%s", task->NightCleaner.c_str());
+                    }
+                    ImGui::End();
+                }
             }
             ImGui::Render();
 //            SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-            SDL_SetRenderDrawColor(sdl_ctx->renderer, 30, 30, 30, 255);
+            SDL_SetRenderDrawColorFloat(sdl_ctx->renderer, task->background.Value.x, task->background.Value.y, task->background.Value.z, task->background.Value.w);
             SDL_RenderClear(sdl_ctx->renderer);
             ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), sdl_ctx->renderer);
             SDL_RenderPresent(sdl_ctx->renderer);
