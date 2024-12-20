@@ -17,7 +17,8 @@ find_package(nlohmann_json REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(imgui REQUIRED)
 find_package(glm REQUIRED)
-find_package(yaml-cpp REQUIRED)
+#find_package(yaml-cpp REQUIRED)
+find_package(mini REQUIRED)
 
 set(SRC_CODE
         src/imgui/imgui_impl_sdlrenderer3.cpp
@@ -52,7 +53,8 @@ target_link_libraries(TextPutter PRIVATE
         SDL3-static
         imgui::imgui
         spdlog::spdlog
-        yaml-cpp::yaml-cpp
+#        yaml-cpp::yaml-cpp
+        mini::mini
         nlohmann_json::nlohmann_json
         glm::glm
 )

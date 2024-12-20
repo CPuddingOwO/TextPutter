@@ -12,7 +12,8 @@
 
 #include <stdexcept>
 #include <spdlog/spdlog.h>
-#include <yaml-cpp/yaml.h>
+//#include <yaml-cpp/yaml.h>
+#include <mini/ini.h>
 
 namespace tp {
 
@@ -144,15 +145,29 @@ namespace tp {
                 default: task->weekDay = "";
             }
 
-            YAML::Node data = YAML::LoadFile("data.yml");
-            task->bbColor = HexToImColor(data["BBColor"].as<std::string>());
-            task->lcColor = HexToImColor(data["LCColor"].as<std::string>());
-            task->ncColor = HexToImColor(data["NCColor"].as<std::string>());
-            task->background = HexToImColor(data["BackgroundColor"].as<std::string>());
+            mINI::INIFile file("data.ini");
+            mINI::INIStructure ini;
+            file.read(ini);
 
-            task->Blackboard = data["BrashBlackBoard"][0][task->weekDay.c_str()].as<std::string>();
-            task->LoonCleaner = data["LoonClearner"][0][task->weekDay.c_str()].as<std::string>();
-            task->NightCleaner = data["NightClearner"][0][task->weekDay.c_str()].as<std::string>();
+            task->bbColor = HexToImColor(ini["Colors"]["BBColor"]);
+            task->lcColor = HexToImColor(ini["Colors"]["LCColor"]);
+            task->ncColor = HexToImColor(ini["Colors"]["NCColor"]);
+            task->background = HexToImColor(ini["Colors"]["BackgroundColor"]);
+
+            task->LoonCleaner = ini["LoonClearner"][task->weekDay];
+            task->NightCleaner = ini["NightClearner"][task->weekDay];
+            task->Blackboard = ini["BrashBlackBoard"][task->weekDay];
+
+
+//            YAML::Node data = YAML::LoadFile("data.yml");
+//            task->bbColor = HexToImColor(data["BBColor"].as<std::string>());
+//            task->lcColor = HexToImColor(data["LCColor"].as<std::string>());
+//            task->ncColor = HexToImColor(data["NCColor"].as<std::string>());
+//            task->background = HexToImColor(data["BackgroundColor"].as<std::string>());
+//
+//            task->Blackboard = data["BrashBlackBoard"][0][task->weekDay.c_str()].as<std::string>();
+//            task->LoonCleaner = data["LoonClearner"][0][task->weekDay.c_str()].as<std::string>();
+//            task->NightCleaner = data["NightClearner"][0][task->weekDay.c_str()].as<std::string>();
         }
     }
 

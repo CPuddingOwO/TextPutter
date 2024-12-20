@@ -2,6 +2,7 @@
 # To keep your changes, remove these comment lines, but the plugin won't be able to modify your requirements
 
 requirements:
+  - "mini/0.9.16"
   - "yaml-cpp/0.8.0"
   - "glm/1.0.1"
   - "nlohmann_json/3.11.3"
