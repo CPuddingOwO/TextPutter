@@ -1,8 +1,7 @@
 .idea
 
 build
-external/sdl/*
-external/sdl_image/*
+external/sdl/
 
 *.iml
 *.o
