@@ -49,7 +49,7 @@ namespace tp {
         { // Init Contexts
             auto ctx = std::make_shared<tp::SDL_Context>();
             ctx->window_title = "TextPutter";
-            ctx->window_size = glm::ivec2(640, 480);
+            ctx->window_size = glm::ivec2(640, 170);
             SharedLocator::Provide<tp::SDL_Context>(ctx);
 
             auto state = std::make_shared<tp::State>();
@@ -114,10 +114,11 @@ namespace tp {
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
             //io.Fonts->AddFontDefault();
-            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 32.0f, nullptr,
-                                         io.Fonts->GetGlyphRangesChineseFull());
+            // TODO: IMGUI的问题，字体不是矢量，而是UV图，字体越大，内存占用越大，放大会糊
+            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 48.0f, nullptr,
+                                         io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 //            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 32.0f);
-//            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\segoeui.ttf)", 32.0f);
+//            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\segoeui.ttf)", 48.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
@@ -220,6 +221,9 @@ namespace tp {
 
                     ImGui::Begin("#App#Main", &open, flags);
                     {
+                        ImGui::TextColored(task->bbColor, "擦黑板: ");ImGui::SameLine();
+                        ImGui::TextColored(task->bbColor, "%s", task->Blackboard.c_str());
+
                         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize("XX  ").x);
                         if (ImGui::Button("XX")) {
                             app_state->isRunning = false;
@@ -228,9 +232,7 @@ namespace tp {
                         if (ImGui::Button("--")) {
                             SDL_MinimizeWindow(sdl_ctx->window);
                         }
-                        ImGui::TextColored(ImColor(255, 73, 158, 255), "非常好ImGui, 使我的IDE旋转");
-                        ImGui::TextColored(task->bbColor, "擦黑板: ");ImGui::SameLine();
-                        ImGui::TextColored(task->bbColor, "%s", task->Blackboard.c_str());
+
                         ImGui::TextColored(task->lcColor, "中午卫生: ");ImGui::SameLine();
                         ImGui::TextColored(task->lcColor, "%s", task->LoonCleaner.c_str());
                         ImGui::TextColored(task->ncColor, "晚上卫生: ");ImGui::SameLine();
@@ -240,7 +242,8 @@ namespace tp {
                 }
             }
             ImGui::Render();
-//            SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+//            auto io = ImGui::GetIO();
+//            SDL_SetRenderScale(sdl_ctx->renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
             SDL_SetRenderDrawColorFloat(sdl_ctx->renderer, task->background.Value.x, task->background.Value.y, task->background.Value.z, task->background.Value.w);
             SDL_RenderClear(sdl_ctx->renderer);
             ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), sdl_ctx->renderer);
