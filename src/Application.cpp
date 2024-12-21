@@ -60,8 +60,8 @@ namespace tp {
             SharedLocator::Provide<tp::Data>(students_task);
 
             auto clock = std::make_shared<tp::Clock>();
-//            clock->render.target_fps = 15.0f;
-            clock->render.target_fps = 60.0f;
+            clock->render.target_fps = 15.0f;
+//            clock->render.target_fps = 60.0f;
             clock->render.dt = 1000.0f / clock->render.target_fps;
             SharedLocator::Provide<tp::Clock>(clock);
         }
