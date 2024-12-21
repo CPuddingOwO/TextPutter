@@ -8,6 +8,8 @@ namespace tp {
         SDL_Window* window;
         SDL_Renderer* renderer;
 
+        glm::ivec2 screen_size;
+
         std::string window_title;
         glm::ivec2 window_size;
     };

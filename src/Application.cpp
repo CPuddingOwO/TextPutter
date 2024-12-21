@@ -3,6 +3,7 @@
 #include <TextPutter/io/SDL.hpp>
 #include <TextPutter/io/State.hpp>
 #include <TextPutter/io/Data.hpp>
+#include <TextPutter/io/Clock.hpp>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -57,6 +58,12 @@ namespace tp {
 
             auto students_task = std::make_shared<tp::Data>();
             SharedLocator::Provide<tp::Data>(students_task);
+
+            auto clock = std::make_shared<tp::Clock>();
+//            clock->render.target_fps = 15.0f;
+            clock->render.target_fps = 60.0f;
+            clock->render.dt = 1000.0f / clock->render.target_fps;
+            SharedLocator::Provide<tp::Clock>(clock);
         }
 
         auto sdl_ctx = SharedLocator::Get<tp::SDL_Context>();
@@ -115,7 +122,7 @@ namespace tp {
 
             //io.Fonts->AddFontDefault();
             // TODO: IMGUI的问题，字体不是矢量，而是UV图，字体越大，内存占用越大，放大会糊
-            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 48.0f, nullptr,
+            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 46.0f, nullptr,
                                          io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 //            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\msyh.ttc)", 32.0f);
 //            io.Fonts->AddFontFromFileTTF(R"(c:\Windows\Fonts\segoeui.ttf)", 48.0f);
@@ -170,14 +177,24 @@ namespace tp {
 //            task->LoonCleaner = data["LoonClearner"][0][task->weekDay.c_str()].as<std::string>();
 //            task->NightCleaner = data["NightClearner"][0][task->weekDay.c_str()].as<std::string>();
         }
+
+        {
+            SDL_DisplayID id = SDL_GetDisplayForWindow(sdl_ctx->window);
+            SDL_DisplayMode mode;
+            mode = *SDL_GetCurrentDisplayMode(id);
+            sdl_ctx->screen_size.x = mode.w;
+            sdl_ctx->screen_size.y = mode.h;
+        }
     }
 
     void Application::run() {
         auto app_state = SharedLocator::Get<tp::State>();
         auto sdl_ctx = SharedLocator::Get<tp::SDL_Context>();
         auto task = SharedLocator::Get<tp::Data>();
+        auto app_clock = SharedLocator::Get<tp::Clock>();
 
         while (app_state->isRunning) {
+            app_clock->render.t1 = std::chrono::steady_clock::now();
             { // Event Polling
                 SDL_Event event;
                 while (SDL_PollEvent(&event)) {
@@ -232,22 +249,67 @@ namespace tp {
                         if (ImGui::Button("--")) {
                             SDL_MinimizeWindow(sdl_ctx->window);
                         }
-
+                        ImGui::Separator();
                         ImGui::TextColored(task->lcColor, "中午卫生: ");ImGui::SameLine();
-                        ImGui::TextColored(task->lcColor, "%s", task->LoonCleaner.c_str());
+                        ImGui::TextColored(task->lcColor, "%s", task->LoonCleaner.c_str());ImGui::Separator();
                         ImGui::TextColored(task->ncColor, "晚上卫生: ");ImGui::SameLine();
                         ImGui::TextColored(task->ncColor, "%s", task->NightCleaner.c_str());
+//                        ImGui::SameLine();ImGui::Text("%.3f ms/f (%.1f FPS)", 1000.0f / imgui_io.Framerate, imgui_io.Framerate);
+
+                        {
+                            static int location = 3; // 默认位置改为右下角
+                            ImGuiIO& io = ImGui::GetIO();
+                            if (location >= 0)
+                            {
+                                int PAD = 10.0f;
+                                glm::ivec2 work_pos = {0, 0};
+                                glm::ivec2 work_size = sdl_ctx->screen_size;
+                                work_size.y -= 80;
+
+                                int x = (location & 1) ? (work_pos.x + work_size.x - PAD - sdl_ctx->window_size.x) : (work_pos.x + PAD);
+                                int y = (location & 2) ? (work_pos.y + work_size.y - PAD - sdl_ctx->window_size.y) : (work_pos.y + PAD);
+
+                                SDL_SetWindowPosition(sdl_ctx->window, x, y);
+                            }
+                            else if (location == -2)
+                            {
+                                // 居中窗口
+                                SDL_SetWindowPosition(sdl_ctx->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+                            }
+
+                            ImGui::SetNextWindowBgAlpha(0.35f); // 设置窗口的透明背景
+                            if (ImGui::BeginPopupContextWindow())
+                            {
+                                if (ImGui::MenuItem("Center",       nullptr, location == -2)) location = -2;
+                                if (ImGui::MenuItem("Top-left",     nullptr, location == 0)) location = 0;
+                                if (ImGui::MenuItem("Top-right",    nullptr, location == 1)) location = 1;
+                                if (ImGui::MenuItem("Bottom-left",  nullptr, location == 2)) location = 2;
+                                if (ImGui::MenuItem("Bottom-right", nullptr, location == 3)) location = 3;
+                                ImGui::EndPopup();
+                            }
+                        }
                     }
                     ImGui::End();
+//                    ImGui::ShowDemoWindow();
                 }
             }
             ImGui::Render();
+
 //            auto io = ImGui::GetIO();
+//            io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 //            SDL_SetRenderScale(sdl_ctx->renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+
             SDL_SetRenderDrawColorFloat(sdl_ctx->renderer, task->background.Value.x, task->background.Value.y, task->background.Value.z, task->background.Value.w);
             SDL_RenderClear(sdl_ctx->renderer);
             ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), sdl_ctx->renderer);
             SDL_RenderPresent(sdl_ctx->renderer);
+
+            std::chrono::duration<double, std::milli> work_time = app_clock->render.t1 - app_clock->render.t2;
+
+            if (work_time.count() < app_clock->render.dt) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(app_clock->render.dt - work_time.count())));
+            }
+            app_clock->render.t2 = std::chrono::steady_clock::now();
         }
     }
 
