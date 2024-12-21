@@ -4,11 +4,15 @@ project(TextPutter)
 set(CMAKE_CXX_STANDARD 20)
 set(SDL_STATIC ON)
 set(SDL_SHARED OFF)
+set(__WIN32 ON) # 调整为 OFF 在Windows上显示命令行窗口
 
 if (NOT DEFINED CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/install")
 endif ()
 
+if (__WIN32 AND WIN32)
+    add_compile_definitions(__WIN32)
+endif ()
 
 include(GNUInstallDirs)
 list(APPEND CMAKE_MODULE_PATH "${CatBirdRemake_SOURCE_DIR}/cmake")
@@ -37,7 +41,11 @@ set(DEBUG_CODE
 
 list(APPEND SRC_CODE ${DEBUG_CODE})
 
-add_executable(TextPutter ${SRC_CODE})
+if (__WIN32 AND WIN32)
+    add_executable(TextPutter WIN32 ${SRC_CODE})
+else ()
+    add_executable(TextPutter ${SRC_CODE})
+endif ()
 install(TARGETS TextPutter
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
